@@ -1,25 +1,25 @@
 import requests
 
-# Custom Headers for fetching M3U playlists
 custom_headers = {
-  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; rv:78.0) Gecko/20100101 Firefox/78.0",
-  "Accept": "*/*",
-  "Cache-Control": "no-cache, no-store",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Accept": "*/*",
+    "Cache-Control": "no-cache, no-store",
 }
 
-license_headers = {
-  "Content-Type": "*/*",
-  "User-Agent": "Dalvik/2.1.0 (Linux; U; Android)",
-}
-
-
-def fetch_url(url: str, timeout: int = 15) -> str:
-  response = requests.get(
-    url=url,
-    headers=custom_headers,
-    timeout=timeout,
-  )
-  response.raise_for_status()
-  if response.status_code != 200:
-    return ""
-  return response.text
+def fetch_url(url: str, timeout: int = 15, user_agent: str = None) -> str:
+    headers = custom_headers.copy()
+    if user_agent:
+        headers["User-Agent"] = user_agent
+    
+    try:
+        response = requests.get(
+            url=url,
+            headers=headers,
+            timeout=timeout,
+            allow_redirects=True
+        )
+        if response.status_code != 200:
+            return ""
+        return response.text
+    except Exception:
+        return ""
