@@ -1,5 +1,4 @@
 import base64
-import json
 from dataclasses import dataclass
 from typing import Optional
 from lib.logger import log_error
@@ -7,7 +6,6 @@ from lib.config import ADDON_PATH
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import unpad
 
-# Charger les secrets
 SECRET1_FILE_PATH = ADDON_PATH / "resources" / "secret1.txt"
 SECRET2_FILE_PATH = ADDON_PATH / "resources" / "secret2.txt"
 
