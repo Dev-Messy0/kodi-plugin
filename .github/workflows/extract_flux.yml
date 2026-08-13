@@ -1,0 +1,47 @@
+name: Extract Cricfy Flux
+
+on:
+  schedule:
+    # Exécution toutes les 6 heures
+    - cron: '0 */6 * * *'
+  workflow_dispatch:  # Permet un lancement manuel depuis GitHub
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          cd plugin.video.cricfy
+          pip install -r requirements.txt
+
+      - name: Run extraction script
+        id: extract
+        run: |
+          cd plugin.video.cricfy
+          python extract_flux.py
+        continue-on-error: false
+
+      - name: Generate cricfy.txt with channels
+        run: |
+          cd plugin.video.cricfy
+          python generate_txt.py
+
+      - name: Upload artefact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cricfy-flux
+          path: |
+            plugin.video.cricfy/cricfy.txt
+            plugin.video.cricfy/flux_cricfy.json
+            plugin.video.cricfy/flux_cricfy.csv
+          retention-days: 7
