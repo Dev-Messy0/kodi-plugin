@@ -102,17 +102,19 @@ def save_flux(flux, output_file="flux_cricfy.json"):
     print(f"\n💾 {len(flux)} flux sauvegardés dans {output_file}")
 
 def save_flux_csv(flux, output_file="flux_cricfy.csv"):
-    """Sauvegarde les flux en CSV (version simplifiée)"""
+    """Sauvegarde les flux en CSV"""
     import csv
     if not flux:
         return
     
-    keys = ['title', 'provider', 'url', 'group', 'logo']
+    keys = ['title', 'provider', 'url', 'group', 'logo', 'is_drm']
     with open(output_file, 'w', newline='', encoding='utf-8') as f:
         writer = csv.DictWriter(f, fieldnames=keys)
         writer.writeheader()
         for ch in flux:
-            writer.writerow({k: ch.get(k, '') for k in keys})
+            row = {k: ch.get(k, '') for k in keys}
+            row['is_drm'] = 'Oui' if ch.get('is_drm') else 'Non'
+            writer.writerow(row)
     print(f"💾 CSV sauvegardé dans {output_file}")
 
 def main():
