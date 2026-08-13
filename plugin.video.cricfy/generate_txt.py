@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Génère un fichier cricfy.txt avec les flux et leurs images
-Format : Nom de la chaîne | URL du flux | URL du logo | Provider
+Génère un fichier playlist.m3u8 au format JSON
+Contient : nom, URL du flux (m3u8), logo, catégorie, provider, DRM
 """
 
 import json
@@ -11,10 +11,12 @@ from pathlib import Path
 # Ajouter le chemin du plugin pour les imports
 sys.path.insert(0, str(Path(__file__).parent))
 
-def generate_txt():
-    """Génère cricfy.txt à partir de flux_cricfy.json"""
+def generate_json_playlist():
+    """
+    Génère un fichier playlist.m3u8 au format JSON
+    Structure : { "channels": [ { "name": "", "url": "", "logo": "", "category": "", "provider": "", "drm": false } ] }
+    """
     
-    # Charger le fichier JSON
     json_file = Path(__file__).parent / "flux_cricfy.json"
     if not json_file.exists():
         print("❌ flux_cricfy.json introuvable")
@@ -27,79 +29,95 @@ def generate_txt():
         print("❌ Aucun flux trouvé")
         return
     
-    # Générer le fichier TXT
-    txt_file = Path(__file__).parent / "cricfy.txt"
+    # Structure de la playlist JSON
+    playlist = {
+        "version": "1.0",
+        "generated": str(Path(__file__).parent.stat().st_mtime),
+        "total": len(flux),
+        "channels": []
+    }
     
-    with open(txt_file, 'w', encoding='utf-8') as f:
-        # En-tête
-        f.write("#" + "=" * 78 + "\n")
-        f.write("# LISTE DES FLUX CRICFY\n")
-        f.write(f"# {len(flux)} chaînes récupérées\n")
-        f.write("#" + "=" * 78 + "\n")
-        f.write("# Format: Nom | URL du flux | URL du logo | Provider | DRM\n")
-        f.write("#" + "=" * 78 + "\n\n")
+    # Trier par provider puis par nom
+    flux_tries = sorted(flux, key=lambda x: (x.get('provider', ''), x.get('title', '')))
+    
+    for ch in flux_tries:
+        # Nettoyer l'URL
+        url = ch.get('url', '').strip()
+        if not url or not url.startswith(('http', 'https')):
+            continue
         
-        # Trier par provider puis par nom
-        flux_tries = sorted(flux, key=lambda x: (x.get('provider', ''), x.get('title', '')))
+        # Nettoyer le nom
+        name = ch.get('title', 'Sans titre').strip()
+        if not name or name == 'Sans titre':
+            # Essayer d'extraire un nom depuis l'URL
+            import re
+            match = re.search(r'/([^/]+)\.m3u8?', url)
+            if match:
+                name = match.group(1).replace('_', ' ').title()
         
-        # Compter par provider
-        providers = {}
-        for ch in flux_tries:
-            prov = ch.get('provider', 'Unknown')
-            providers[prov] = providers.get(prov, 0) + 1
+        channel = {
+            "name": name,
+            "url": url,
+            "logo": ch.get('logo', ''),
+            "category": ch.get('group', '') or ch.get('provider', 'General'),
+            "provider": ch.get('provider', 'Unknown'),
+            "drm": ch.get('is_drm', False),
+            "user_agent": ch.get('user_agent', ''),
+            "referer": ch.get('referer', ''),
+            "headers": ch.get('headers', {})
+        }
         
-        for prov, count in providers.items():
-            f.write(f"\n# 📡 {prov} ({count} chaînes)\n")
-            f.write("#" + "-" * 78 + "\n")
-            
-            for ch in flux_tries:
-                if ch.get('provider') != prov:
-                    continue
-                
-                title = ch.get('title', 'Unknown')
-                url = ch.get('url', '')
-                logo = ch.get('logo', '')
-                drm = '🔒' if ch.get('is_drm') else ''
-                
-                # Écrire la ligne
-                f.write(f"{title} | {url} | {logo} | {prov} | {drm}\n")
+        playlist["channels"].append(channel)
+    
+    # Sauvegarder en JSON
+    output_file = Path(__file__).parent / "playlist.m3u8"
+    with open(output_file, 'w', encoding='utf-8') as f:
+        json.dump(playlist, f, indent=2, ensure_ascii=False)
+    
+    print(f"✅ playlist.m3u8 généré avec {len(playlist['channels'])} chaînes (format JSON)")
+    
+    # Générer aussi une version M3U classique pour compatibilité
+    generate_classic_m3u(flux)
 
-    print(f"✅ cricfy.txt généré avec {len(flux)} chaînes")
-
-def generate_m3u():
-    """Génère un fichier M3U utilisable dans Kodi/VLC"""
+def generate_classic_m3u(flux):
+    """Génère un fichier M3U classique en parallèle"""
     
-    json_file = Path(__file__).parent / "flux_cricfy.json"
-    if not json_file.exists():
-        print("❌ flux_cricfy.json introuvable")
-        return
-    
-    with open(json_file, 'r', encoding='utf-8') as f:
-        flux = json.load(f)
-    
-    if not flux:
-        return
-    
-    m3u_file = Path(__file__).parent / "cricfy.m3u"
+    m3u_file = Path(__file__).parent / "playlist_classic.m3u"
     
     with open(m3u_file, 'w', encoding='utf-8') as f:
         f.write("#EXTM3U\n")
-        f.write("# Généré automatiquement depuis Cricfy\n\n")
+        f.write(f"# Généré automatiquement depuis Cricfy - {len(flux)} chaînes\n\n")
         
         for ch in flux:
-            title = ch.get('title', 'Unknown')
-            url = ch.get('url', '')
+            name = ch.get('title', 'Sans titre').strip()
+            url = ch.get('url', '').strip()
             logo = ch.get('logo', '')
-            group = ch.get('group', '')
+            group = ch.get('group', '') or ch.get('provider', 'General')
             
-            if not url:
+            if not url or not url.startswith(('http', 'https')):
                 continue
             
-            f.write(f'#EXTINF:-1 tvg-logo="{logo}" group-title="{group}",{title}\n')
+            # Nettoyer le nom pour éviter les caractères spéciaux
+            name_safe = name.replace('|', '').replace('\\', '')
+            
+            f.write(f'#EXTINF:-1 tvg-logo="{logo}" group-title="{group}",{name_safe}\n')
             f.write(f'{url}\n')
     
-    print(f"✅ cricfy.m3u généré avec {len(flux)} chaînes")
+    print(f"✅ playlist_classic.m3u généré (format M3U classique)")
+
+def generate_categories(flux):
+    """Génère un résumé des catégories disponibles"""
+    
+    categories = {}
+    for ch in flux:
+        cat = ch.get('group', '') or ch.get('provider', 'General')
+        if cat not in categories:
+            categories[cat] = 0
+        categories[cat] += 1
+    
+    print("\n📊 Catégories disponibles :")
+    for cat, count in sorted(categories.items(), key=lambda x: -x[1]):
+        print(f"   - {cat}: {count} chaînes")
 
 if __name__ == "__main__":
-    generate_txt()
-    generate_m3u()
+    generate_json_playlist()
