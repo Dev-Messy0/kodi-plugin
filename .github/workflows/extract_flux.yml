@@ -20,10 +20,14 @@ jobs:
 
       - name: Install dependencies
         run: |
-          cd plugin.video.cricfy
-          pip install requests pycryptodome
-          # Ou utilise requirements.txt :
-          # pip install -r requirements.txt
+          python -m pip install --upgrade pip
+          pip install requests
+          pip install cryptography
+          pip install pycryptodome
+          # Vérifier l'installation
+          python -c "import requests; print('requests OK')"
+          python -c "from cryptography.hazmat.primitives.ciphers import Cipher; print('cryptography OK')"
+          python -c "from Cryptodome.Cipher import AES; print('pycryptodome OK')"
 
       - name: Run extraction script
         run: |
