@@ -14,7 +14,12 @@ class SimpleCache:
     def delete(self, key):
         if key in self._cache:
             del self._cache[key]
+    
+    def deleteAll(self):
+        self._cache = {}
 
 # Remplacer StorageServer par SimpleCache
 cache = SimpleCache()
-ADDON_PATH = Path(__file__).parent.parent  # Remonte à la racine du projet
+
+# Pointe vers le dossier plugin.video.cricfy/
+ADDON_PATH = Path(__file__).parent.parent
