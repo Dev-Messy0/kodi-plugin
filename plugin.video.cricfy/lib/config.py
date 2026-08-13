@@ -1,10 +1,20 @@
 from pathlib import Path
-from xbmcaddon import Addon
-from xbmcvfs import translatePath
-try:
-  import StorageServer  # pyright: ignore[reportMissingImports]
-except:
-  import lib.storageserverdummy as StorageServer
 
-ADDON_PATH = Path(translatePath(Addon().getAddonInfo('path')))
-cache = StorageServer.StorageServer("cricfy_plugin", 24)
+# Cache simple en mémoire pour le script autonome
+class SimpleCache:
+    def __init__(self):
+        self._cache = {}
+    
+    def get(self, key):
+        return self._cache.get(key)
+    
+    def set(self, key, value):
+        self._cache[key] = value
+    
+    def delete(self, key):
+        if key in self._cache:
+            del self._cache[key]
+
+# Remplacer StorageServer par SimpleCache
+cache = SimpleCache()
+ADDON_PATH = Path(__file__).parent.parent  # Remonte à la racine du projet
