@@ -2,9 +2,8 @@ name: Extract Cricfy Flux
 
 on:
   schedule:
-    # Exécution toutes les 6 heures
     - cron: '0 */6 * * *'
-  workflow_dispatch:  # Permet un lancement manuel depuis GitHub
+  workflow_dispatch:
 
 jobs:
   extract:
@@ -22,16 +21,16 @@ jobs:
       - name: Install dependencies
         run: |
           cd plugin.video.cricfy
-          pip install -r requirements.txt
+          pip install requests pycryptodome
+          # Ou utilise requirements.txt :
+          # pip install -r requirements.txt
 
       - name: Run extraction script
-        id: extract
         run: |
           cd plugin.video.cricfy
           python extract_flux.py
-        continue-on-error: false
 
-      - name: Generate cricfy.txt with channels
+      - name: Generate cricfy.txt
         run: |
           cd plugin.video.cricfy
           python generate_txt.py
@@ -42,6 +41,7 @@ jobs:
           name: cricfy-flux
           path: |
             plugin.video.cricfy/cricfy.txt
+            plugin.video.cricfy/cricfy.m3u
             plugin.video.cricfy/flux_cricfy.json
             plugin.video.cricfy/flux_cricfy.csv
           retention-days: 7
