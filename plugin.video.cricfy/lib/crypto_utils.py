@@ -4,13 +4,19 @@ from dataclasses import dataclass
 from typing import Optional
 from lib.logger import log_error
 from lib.config import ADDON_PATH
-from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-from cryptography.hazmat.backends import default_backend
+from Crypto.Cipher import AES
+from Crypto.Util.Padding import unpad
 
+# Charger les secrets
 SECRET1_FILE_PATH = ADDON_PATH / "resources" / "secret1.txt"
 SECRET2_FILE_PATH = ADDON_PATH / "resources" / "secret2.txt"
-SECRET1 = SECRET1_FILE_PATH.read_text(encoding="utf-8").strip() if SECRET1_FILE_PATH.exists() else ""
-SECRET2 = SECRET2_FILE_PATH.read_text(encoding="utf-8").strip() if SECRET2_FILE_PATH.exists() else ""
+
+SECRET1 = ""
+SECRET2 = ""
+if SECRET1_FILE_PATH.exists():
+    SECRET1 = SECRET1_FILE_PATH.read_text(encoding="utf-8").strip()
+if SECRET2_FILE_PATH.exists():
+    SECRET2 = SECRET2_FILE_PATH.read_text(encoding="utf-8").strip()
 
 @dataclass
 class KeyInfo:
@@ -64,10 +70,8 @@ def decrypt_data(encrypted_base64: str) -> Optional[str]:
 
 def try_decrypt(ciphertext: bytes, key_info: KeyInfo) -> Optional[str]:
     try:
-        backend = default_backend()
-        cipher = Cipher(algorithms.AES(key_info.key), modes.CBC(key_info.iv), backend=backend)
-        decryptor = cipher.decryptor()
-        decrypted = decryptor.update(ciphertext) + decryptor.finalize()
+        cipher = AES.new(key_info.key, AES.MODE_CBC, key_info.iv)
+        decrypted = cipher.decrypt(ciphertext)
         pad_len = decrypted[-1]
         decrypted = decrypted[:-pad_len]
         text = decrypted.decode("utf-8")
@@ -79,8 +83,9 @@ def try_decrypt(ciphertext: bytes, key_info: KeyInfo) -> Optional[str]:
 
 def decrypt_content(content: str) -> str:
     try:
-        # Vérifier si le contenu est déjà valide
-        if content.startswith("#EXTM3U") or content.startswith("#EXTINF"):
+        if (content.startswith("#EXTM3U") or
+            content.startswith("#EXTINF") or
+            content.startswith("#KODIPROP")):
             return content
         
         trimmed_content = content.strip()
@@ -98,13 +103,9 @@ def decrypt_content(content: str) -> str:
         key = base64.b64decode(key_base64)
         encrypted_bytes = base64.b64decode(encrypted_data_str)
         
-        backend = default_backend()
-        cipher = Cipher(algorithms.AES(key), modes.CBC(iv), backend=backend)
-        decryptor = cipher.decryptor()
-        decrypted_padded = decryptor.update(encrypted_bytes) + decryptor.finalize()
-        
-        pad_len = decrypted_padded[-1]
-        decrypted_data = decrypted_padded[:-pad_len]
+        cipher = AES.new(key, AES.MODE_CBC, iv)
+        decrypted_padded = cipher.decrypt(encrypted_bytes)
+        decrypted_data = unpad(decrypted_padded, AES.block_size)
         return decrypted_data.decode('utf-8')
     except Exception as e:
         log_error("crypto_utils", f"Content decryption failed: {e}")
